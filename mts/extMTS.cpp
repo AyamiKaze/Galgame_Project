@@ -35,10 +35,21 @@ void mmcpy(void* dst, void* src, DWORD size)
 	memcpy(dst, src, size);
 }
 
-int Emsg(wchar_t* msg)
+int Emsg(char* msg)
 {
-	MessageBox(0, msg, 0, 0);
+	MessageBoxA(0, msg, 0, 0);
 	return -1;
+}
+
+void make_path(char* lpPath) {
+	int length = lstrlenA(lpPath);
+	for (int i = 0; i < length; i++) {
+		if (lpPath[i] == L'/' || lpPath[i] == L'\\') {
+			lpPath[i] = 0;
+			CreateDirectoryA(lpPath, NULL);
+			lpPath[i] = L'\\';
+		}
+	}
 }
 
 int main()
@@ -49,12 +60,13 @@ int main()
 	auto fp = fopen(FileName, "rb");
 	fread(&pak_header, sizeof(pak_header), 1, fp);
 	if(strcmp(pak_header.magic,"DATA$TOP"))
-		return Emsg((wchar_t*)L"not DATA$TOP magic");
+		return Emsg((char*)"not DATA$TOP magic");
 	unsigned int index_entries = pak_header.index_entries - 1;
 	DWORD index_buffer_length = index_entries * sizeof(pak_entry_t);
 	pak_entry_t* index_buffer = new pak_entry_t[index_entries];
+	memset(index_buffer, 0x00, index_entries);
 	if(!index_buffer)
-		return Emsg((wchar_t*)L"no index_buffer");
+		return Emsg((char*)"no index_buffer");
 	fread(index_buffer, index_buffer_length, 1, fp);
 
 	for (DWORD i = 0; i < index_entries; i++)
@@ -66,23 +78,25 @@ int main()
 
 		BYTE* FileBuffer = new BYTE [index_buffer[i].length];
 		if(!FileBuffer)
-			return Emsg((wchar_t*)L"no FileBuffer");
-		fread(FileBuffer, index_buffer[i].length, 1, fp);
+			return Emsg((char*)"no FileBuffer");
 
 
 		string fnm(index_buffer[i].name);
 		fnm = "__upk\\" + fnm;
 		string strDirName = fnm.substr(0, fnm.find_last_of("\\"));
-
 		if (_access(strDirName.c_str(), 0) == -1)
 		{
 			_mkdir(strDirName.c_str());
-			//_chdir(strDirName.c_str());
 		}
-
 		auto fn = fopen(fnm.c_str(), "wb");
-		cout << "UnpackFile:" << fnm << endl;
-
+		if (!fn)
+		{
+			char LOG[250];
+			sprintf(LOG,(char*)"not fn: %s", index_buffer[i].name);
+			return Emsg(LOG);
+		}
+		cout << "UnpackFile:" << index_buffer[i].name << endl;
+		fread(FileBuffer, index_buffer[i].length, 1, fp);
 		fwrite(FileBuffer, index_buffer[i].length, 1, fn);
 		fclose(fn);
 		delete [] FileBuffer;
@@ -90,7 +104,6 @@ int main()
 	}
 	fclose(fp);
 	delete[] index_buffer;
-	delete[] (&pak_header);
 		//index_buffer[i].offset1 += index_buffer_length + sizeof(pak_header_t);
 	
 	system("pause");

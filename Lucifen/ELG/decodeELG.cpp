@@ -408,9 +408,10 @@ int write_bmp(const char* filename,
 	bmi.biHeight = height;
 	bmi.biPlanes = 1;
 	bmi.biBitCount = depth_bytes;
-	string fnm(filename);
-	fnm += fnm + ".bmp";
-	FILE* fd = fopen(fnm.c_str(), "wb");
+	char FileName[MAX_PATH];
+	strcpy(FileName, filename);
+	strcat(FileName, ".bmp");
+	FILE* fd = fopen(FileName, "wb");
 	fwrite(&bmf, 1, sizeof(bmf), fd);
 	fwrite(&bmi, 1, sizeof(bmi), fd);
 	fwrite(buff, 1, len, fd);
@@ -419,21 +420,14 @@ int write_bmp(const char* filename,
 }
 
 
-#define DEBUG
+#define RELEASE
 
 int Emsg(char* msg)
 {
 	MessageBoxA(0, msg, 0, 0);
 	return -1;
 }
-void MyWrite(char* FileName, BYTE* buff, DWORD size, string afnm)
-{
-	string fnm(FileName);
-	fnm = fnm + afnm;
-	auto fp = fopen(fnm.c_str(), "wb");
-	fwrite(buff, size, 1, fp);
-	fclose(fp);
-}
+
 int main(int argc, char* argv[])
 {
 	char* FileName;
@@ -501,7 +495,7 @@ int main(int argc, char* argv[])
 	case 8:
 		elg8_uncompress(uncompbuff, elg8_uncompress((BYTE*)palette, compbuff));
 		cout << "elg8_uncompress succ" << endl;
-		//write_bmp(FileName, uncompbuff, uncomprlen, w, h, b);
+		write_bmp(FileName, uncompbuff, uncomprlen, w, h, b);
 		break;
 	case 24:
 		elg24_uncompress(uncompbuff, compbuff, w);
@@ -511,7 +505,7 @@ int main(int argc, char* argv[])
 	case 32:
 		elga_uncompress(uncompbuff, elg32_uncompress(uncompbuff, compbuff, w));
 		cout << "elga_uncompress succ" << endl;
-		write_bmp(FileName, uncompbuff, uncomprlen, w, h, b);
+		write_bmp(FileName, uncompbuff, uncomprlen, w, -h, b);
 		break;
 	default:
 		return Emsg((char*)"no support bpp type.");

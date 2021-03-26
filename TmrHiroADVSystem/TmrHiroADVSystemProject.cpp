@@ -1,12 +1,15 @@
 ﻿// TmrHiroADVSystemProject.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
+#include <stdio.h>
+#include <tchar.h>
+#include <windows.h>
 #include <iostream>
-#include <Windows.h>
-#include <io.h>
-#include <direct.h>
-#include <string>
+#include <fstream>
 #include <vector>
-#include <emmintrin.h>
+#include <memory>
+#include <sstream>
+#include <iomanip>
+#include <wchar.h>
 using namespace std;
 
 int E(const char* msg)
@@ -69,6 +72,23 @@ BOOL IsText(BYTE* text, DWORD size)
     }
     return TRUE;
 }
+
+string BuildSelectText(string text)
+{
+    //string txt = to_string(text);
+    string ret;
+    for (auto& s : text)
+    {
+        //cout << hex << (DWORD)s << endl;
+        if (s == 0x20)
+            ret += "仛";
+        else if (s == 0x64)
+            ret += "仚";
+        else
+            ret += s;
+    }
+    return ret;
+}
 int main(int argc, char* argv[])
 {
     //char FileName[] = "00_01.srp";
@@ -99,8 +119,19 @@ int main(int argc, char* argv[])
         DWORD text_size = code_size - sizeof(DWORD);
         BYTE* text_buff = (FileBuff + pos);
         //if (code == 0x00150050 || code == 0x00000000 || code == 0x00030000 || code == 0x00020000 || code == 0x00060000)
-        if(code == 0x00150050 || (code & 0x0000FFFF) == 0)
+        if (code == 0x00150050 || (code & 0x0000FFFF) == 0)
             WriteLine(text_buff, text_size, fp);
+        else if (code == 0x00140010)//select
+        {
+            DWORD ip = pos + 0x2; //00保留
+            BYTE select_count = *(BYTE*)(FileBuff + ip);
+            ip += 1;
+            char* select_buff = (char*)(FileBuff + ip);
+            string select = BuildSelectText(string(select_buff, text_size - 3));
+            cout << select << endl;
+            DWORD  select_len = select.size();
+            WriteLine((BYTE*)select.c_str(), select_len, fp);
+        }
         pos += text_size;
 
     }

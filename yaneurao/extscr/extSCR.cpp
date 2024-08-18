@@ -71,7 +71,7 @@ int main()
 
         string txtName = FileName + ".txt";
         fp = fopen(txtName.c_str(), "wb");
-        for (int j = 0; j < curSize; j++)
+        for (int j = 0; j < curSize;)
         {
             if (*(WORD*)(curPtr + j) == 0x0002)
             {
@@ -97,7 +97,7 @@ int main()
                         else
                             outStr += s;
                     }
-                    fprintf(fp, "%s\r\n", outStr.c_str());
+                    fprintf(fp, "[0x%08x]%s\r\n;[0x%08x]%s\r\n\r\n", j, outStr.c_str(),j, outStr.c_str());
                     j += strSize;
                 }
             }

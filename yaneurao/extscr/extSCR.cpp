@@ -4,6 +4,8 @@
 #include <iostream>
 #include <Windows.h>
 using namespace std;
+
+#pragma pack (1)
 struct ScrHeader
 {
     CHAR Magic[4]; // SCR\x00
@@ -16,6 +18,9 @@ struct Entry
     CHAR FileName[12];
     DWORD Offset;
 };
+#pragma pack ()
+
+
 int main()
 {
     FILE* fp = fopen("scr.scd", "rb");
@@ -26,27 +31,38 @@ int main()
     fread(buff, size, 1, fp);
     fclose(fp);
     ScrHeader* hdr = (ScrHeader*)buff;
-    BYTE* table = new BYTE[hdr->TableSize];
+
+    DWORD TableSize = hdr->TableSize - sizeof(ScrHeader);
+    cout << hex << TableSize << endl;
+
+    BYTE* table = new BYTE[TableSize];
     BYTE* hdrPtr = buff + sizeof(ScrHeader);
-    memcpy(table, hdrPtr, hdr->TableSize);
-    DWORD StrBlockSize = size - sizeof(ScrHeader) - hdr->TableSize;
+    memcpy(table, hdrPtr, TableSize);
+    DWORD StrBlockSize = size - sizeof(ScrHeader) - TableSize;
     BYTE* StrBlock = new BYTE[StrBlockSize];
-    BYTE* strPtr = buff + hdr->TableSize + sizeof(ScrHeader);
+    BYTE* strPtr = buff + TableSize + sizeof(ScrHeader);
     memcpy(StrBlock, strPtr, StrBlockSize);
     BYTE* decStrPtr = StrBlock;
-    for (int i = 0; i < hdr->TableSize; i++)
+
+    for (int i = 0; i < TableSize; i++)
         table[i] ^= 0xA5;
     for (int i = 0; i < StrBlockSize; i++)
         StrBlock[i] ^= 0xA5;
+
+
+    //fp = fopen("dump.tbl", "wb");
+    //fwrite(table, 1, TableSize, fp);
+    //fclose(fp);
     //fp = fopen("dump.bin", "wb");
-    //fwrite(table, 1, hdr->TableSize, fp);
     //fwrite(StrBlock, 1, StrBlockSize, fp);
     //fclose(fp);
     //system("pause");
     //return 0;
+
+
     DWORD NextOffset = 0;
     string dir = ".\\#upk\\";
-    for (int i = 0; i < hdr->TableSize / sizeof(Entry) - 1; i++)
+    for (int i = 0; i < TableSize / sizeof(Entry); i++)
     {
         Entry* idx = (Entry*)(table + i * sizeof(Entry));
         if (!strcmp(idx->FileName, "LIBRARY"))
@@ -73,12 +89,12 @@ int main()
         fp = fopen(txtName.c_str(), "wb");
         for (int j = 0; j < curSize;)
         {
-            if (*(WORD*)(curPtr + j) == 0x0002)
+            if (*(WORD*)(curPtr + j) == 0x0002 || *(WORD*)(curPtr + j) == 0x001E)
             {
                 j += 2;
                 DWORD strSize = *(WORD*)(curPtr + j);
                 j += 2;
-                if (*(BYTE*)(curPtr + j) < 0x80)
+                if (*(BYTE*)(curPtr + j) < 0x80  || strSize < 3)
                 {
                     j++;
                     continue;
@@ -97,7 +113,8 @@ int main()
                         else
                             outStr += s;
                     }
-                    fprintf(fp, "[0x%08x]%s\r\n;[0x%08x]%s\r\n\r\n", j, outStr.c_str(),j, outStr.c_str());
+                    DWORD off = idx->Offset + j;
+                    fprintf(fp, "[0x%08x]%s\r\n;[0x%08x]%s\r\n\r\n", off, outStr.c_str(), off, outStr.c_str());
                     j += strSize;
                 }
             }
